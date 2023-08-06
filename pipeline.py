@@ -59,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230806.02'
+VERSION = '20230806.03'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36'
 TRACKER_ID = 'skyblog'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -278,7 +278,12 @@ class WgetArgs(object):
 
         item['item_name'] = '\0'.join([
             s for s in item['item_name'].split('\0')
-            if not s.startswith('video:') and not s.startswith('asset:')
+            if (
+                not s.startswith('video:')
+                and not s.startswith('photo:')
+                and not s.startswith('blog-api:')
+                and not s.startswith('post-api:')
+            )
         ])
 
         for item_name in item['item_name'].split('\0'):
@@ -286,23 +291,33 @@ class WgetArgs(object):
             wget_args.append('item-name://'+item_name)
             item_type, item_value = item_name.split(':', 1)
             if item_type == 'blog':
-                wget_args.extend(['--warc-header', 'skyblog-blog-id: '+item_value])
-                wget_args.append('https://api.skyrock.com/v2/user/get.json?id_user={}'.format(item_value))
+                wget_args.extend(['--warc-header', 'skyblog-blog-id-api: '+item_value])
+                wget_args.append('https://www.skyrock.com/common/r/skynautes/card/{}'.format(item_value))
             elif item_type == 'post':
                 user, post_id = item_value.split(':', 1)
-                wget_args.extend(['--warc-header', 'skyblog-post-id: '+post_id])
-                wget_args.append('https://api.skyrock.com/v2/blog/get_post.json?id_user={}&id_post={}'.format(user, post_id))
-            elif item_type == 'photo':
-                user, album_id, photo_id = item_value.split(':', 2)
-                wget_args.extend(['--warc-header', 'skyblog-photo-id: '+photo_id])
-                wget_args.append('https://{}.skyrock.com/profil/photos/{}/{}'.format(user, album_id, post_id))
-            elif item_type == 'video':
-                user, album_id, photo_id = item_value.split(':', 2)
-                wget_args.extend(['--warc-header', 'skyblog-video-id: '+photo_id])
-                wget_args.append('https://{}.skyrock.com/profil/videos/{}/{}'.format(user, album_id, post_id))
+                wget_args.extend(['--warc-header', 'skyblog-post-id-api: '+post_id])
+                wget_args.append('https://{}.skyrock.com/{}'.format(user, post_id))
+            #elif item_type == 'blog-api':
+            #    wget_args.extend(['--warc-header', 'skyblog-blog-id-api: '+item_value])
+            #    wget_args.append('https://api.skyrock.com/v2/user/get.json?id_user={}'.format(item_value))
+            #elif item_type == 'post-api':
+            #    user, post_id = item_value.split(':', 1)
+            #    wget_args.extend(['--warc-header', 'skyblog-post-id-api: '+post_id])
+            #    wget_args.append('https://api.skyrock.com/v2/blog/get_post.json?username={}&id_post={}'.format(user, post_id))
+            #elif item_type == 'photo':
+            #    user, album_id, photo_id = item_value.split(':', 2)
+            #    wget_args.extend(['--warc-header', 'skyblog-photo-id: '+photo_id])
+            #    wget_args.append('https://{}.skyrock.com/profil/photos/{}/{}'.format(user, album_id, post_id))
+            #elif item_type == 'video':
+            #    user, album_id, photo_id = item_value.split(':', 2)
+            #    wget_args.extend(['--warc-header', 'skyblog-video-id: '+photo_id])
+            #    wget_args.append('https://{}.skyrock.com/profil/videos/{}/{}'.format(user, album_id, post_id))
             elif item_type == 'asset':
                 wget_args.extend(['--warc-header', 'skyblog-assert: '+item_value])
                 wget_args.append('https://'+item_value)
+            elif item_type == 'tag':
+                user, tag = item_value.split(':', 1)
+                wget_args.append('https://{}.skyrock.com/tags/{}.html'.format(user, tag))
             else:
                 raise Exception('Unknown item')
 
@@ -334,7 +349,7 @@ project = Project(
 pipeline = Pipeline(
     CheckIP(),
     GetItemFromTracker('http://{}/{}/multi={}/'
-        .format(TRACKER_HOST, TRACKER_ID, MULTI_ITEM_SIZE),
+        .format(TRACKER_HOST, 'arkivertest3', MULTI_ITEM_SIZE),
         downloader, VERSION),
     PrepareDirectories(warc_prefix=TRACKER_ID),
     WgetDownload(
@@ -357,7 +372,7 @@ pipeline = Pipeline(
         },
         id_function=stats_id_function,
     ),
-    MoveFiles(),
+    #MoveFiles(),
     LimitConcurrent(NumberConfigValue(min=1, max=20, default='20',
         name='shared:rsync_threads', title='Rsync threads',
         description='The maximum number of concurrent uploads.'),

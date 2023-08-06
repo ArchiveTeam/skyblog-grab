@@ -25,6 +25,7 @@ local bad_items = {}
 local ids = {}
 
 local retry_url = false
+local max_page = 0
 
 abort_item = function(item)
   abortgrab = true
@@ -63,10 +64,11 @@ end
 
 discover_item = function(target, item)
   if not target[item] then
-    if string.match(item, "boxsmall") then
-      discover_item(target, string.gsub(item, "boxsmall", "boxlarge"))
+    local a, b = string.match(item, "^([^:]+):(.+)$")
+    if a and b and a == "post" then
+      discover_item(target, "post-api:" .. b)
     end
-print('discovered', item)
+--print('discovered', item)
     target[item] = true
     return true
   end
@@ -75,9 +77,17 @@ end
 
 find_item = function(url)
   local value = string.match(url, "^https?://api%.skyrock%.com/v2/user/get%.json%?id_user=([0-9]+)$")
-  local type_ = "blog"
+  local type_ = "blog-api"
   if not value then
     other, value = string.match(url, "^https?://api%.skyrock%.com/v2/blog/get_post%.json%?id_user=[0-9]+&id_post=([0-9]+)$")
+    type_ = "post-api"
+  end
+  if not value then
+    value = string.match(url, "^https?://www%.skyrock%.com/common/r/skynautes/card/([0-9]+)$")
+    type_ = "blog"
+  end
+  if not value then
+    other, value = string.match(url, "^https?://([^%.]+)%.skyrock%.com/([0-9]+)$")
     type_ = "post"
   end
   if not value then
@@ -89,8 +99,12 @@ find_item = function(url)
     type_ = "video"
   end
   if not value then
-    value = string.match(url, "^https?://([^%.]*skyrock%.net/.+)$")
+    value = string.match(url, "^https?://([^/]*skyrock%.net/.+)$")
     type_ = "asset"
+  end
+  if not value then
+    other, value = string.match(url, "^https?://([^%.]+)%.skyrock%.com/tags/([^%.]+)%.html$")
+    type_ = "tag"
   end
   if value then
     return {
@@ -107,7 +121,7 @@ set_item = function(url)
   if found then
     item_type = found["type"]
     item_value = found["value"]
-    if item_type == "post" then
+    if string.match(item_type, "^post") or item_type == "tag" then
       item_user = found["other"]
       item_name_new = item_type .. ":" .. item_user .. ":" .. item_value
     elseif item_type == "photo" or item_type == "video" then
@@ -121,6 +135,7 @@ set_item = function(url)
       ids[item_value] = true
       abortgrab = false
       tries = 0
+      max_page = 0
       retry_url = false
       item_name = item_name_new
       print("Archiving item " .. item_name)
@@ -134,27 +149,40 @@ allowed = function(url, parenturl)
   end
 
   if (item_type ~= "www" and string.match(url, "^https?://www%.skyrock%.com/"))
-    or string.match(url, "^https?://[^/]*skyrock%.com/common/r/social/") then
+    or string.match(url, "^https?://[^/]*skyrock%.com/common/r/social/")
+    or string.match(url, "^https?://[^/]*skyrock%.com/.+[%?&]connect=1")
+    or (
+      string.match(url, "/common/r/skynautes/card/")
+      and string.match(url, "/common/r/skynautes/card/([0-9]+)") ~= item_value
+    ) then
     return false
   end
 
+  local found = false
   for pattern, type_ in pairs({
-    ["^https?://([^%.]+)%.skyrock%.com/([0-9]+)[^/]-$"]="post",
+    ["^https?://([^%.]+)%.skyrock%.com/([0-9]+)[^0-9a-zA-Z][^/]*$"]="post",
+    ["^https?://([^%.]+)%.skyrock%.com/([0-9]+)$"]="post",
     ["^https?://([^%.]+)%.skyrock%.com/photo%.html%?.*id_article=([0-9]+)"]="post",
+    ["^https?://([^%.]+)%.skyrock%.com/article_([0-9]+)%.html$"]="post",
     ["^https?://([^%.]+)%.skyrock%.com/profil/photos/([0-9]+)/([0-9]+)$"]="photo",
     ["^https?://([^%.]+)%.skyrock%.com/profil/videos/([0-9]+)/([0-9]+)$"]="video",
-    ["^https?://([^/]*skyrock%.net/.+)$"]="asset"
+    ["^https?://([^/]*skyrock%.net/.+)$"]="asset",
+    ["^https?://([^%.]+)%.skyrock%.com/tags/([^%.]+)%.html"]="tag"
   }) do
     local match = nil
-    if type_ == "post" then
+    if string.match(type_, "^post") or type_ == "tag" then
       match, other = string.match(url, pattern)
     elseif type_ == "photo" or type_ == "video" then
       match, other, other2 = string.match(url, pattern)
     else
       match = string.match(url, pattern)
     end
-    if match then
-      if type_ == "post" then
+    if match
+      and not (
+        string.match(type_, "^post")
+        and tonumber(other) <= max_page
+      ) then
+      if string.match(type_, "^post") or type_ == "tag" then
         match = match .. ":" .. other
       elseif type_ == "photo" or type_ == "video" then
         match = match .. ":" .. other .. ":" .. other2
@@ -162,9 +190,15 @@ allowed = function(url, parenturl)
       local new_item = type_ .. ":" .. match
       if new_item ~= item_name then
         discover_item(discovered_items, new_item)
-        return false
+        if string.match(type_, "^([^%-]+)") ~= string.match(item_type, "^([^%-]+)")
+          or match ~= string.match(item_name, "^[^:]+:(.+)$") then
+          found = true
+        end
       end
     end
+  end
+  if found then
+    return false
   end
 
   if string.match(url, "^https?://[^/]*sk%.mu/")
@@ -174,7 +208,9 @@ allowed = function(url, parenturl)
 
   if string.match(url, "^https?://[^/]*skyrock%.com/") then
     for _, pattern in pairs({
-      "([0-9]+)"
+      "([0-9]+)",
+      "([^%./]+)",
+      "([^%./_]+)"
     }) do
       for s in string.gmatch(string.match(url, "^https?://[^/]+(/.*)"), pattern) do
         if ids[s] then
@@ -195,7 +231,11 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
   local url = urlpos["url"]["url"]
   local html = urlpos["link_expect_html"]
 
-  if allowed(url, parent["url"]) and not processed(url) then
+  if allowed(url, parent["url"]) and (
+    not processed(url)
+    or string.match(url, "/common/r/skynautes/card/")
+    or string.match(url, "^https?://[^%.]+%.skyrock%.com/[0-9]+$")
+  ) then
     addedtolist[url] = true
     return true
   end
@@ -249,7 +289,19 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     if not processed(url_)
       and not processed(url_ .. "/")
       and allowed(url_, origurl) then
-      table.insert(urls, { url=url_ })
+      if string.match(url_, "/profil/wall/more%?")
+        or string.match(url_, "/common/r/skynautes/card/") then
+        table.insert(urls, {
+          url=url_,
+          headers={
+            ["X-Requested-With"]="XMLHttpRequest"
+          }
+        })
+      else
+        table.insert(urls, {
+          url=url_
+        })
+      end
       addedtolist[url_] = true
       addedtolist[url] = true
     end
@@ -353,15 +405,35 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     and status_code < 300
     and not string.match(url, "^https?://[^/]*skyrock%.net/") then
     html = read_file(file)
+    if item_type == "post" then
+      check("https://" .. item_user .. ".skyrock.com/article_" .. item_value .. ".html")
+      check("https://" .. item_user .. ".skyrock.com/" .. item_value)
+      check("https://" .. item_user .. ".skyrock.com/" .. item_value .. ".html")
+    end
+    if item_type == "blog" then
+      if string.match(url, "^https?://[^%.]+%.skyrock%.com/.") then
+        check(string.match(url, "^(https?://[^%.]+%.skyrock%.com/)"))
+      elseif string.match(url, "^https?://[^%.]+%.skyrock%.com/$") then
+        check(url .. "robots.txt")
+        check(url .. "atom.xml")
+        check(url .. "sitemap.xml")
+        for a, b, c in string.gmatch(html, '<option%s+value="([0-9]+)">Page%s+([0-9]+)%s+of%s+([0-9]+)</option>') do
+          if a ~= b then
+            error("Page numbers do not match.")
+          end
+          c = tonumber(c)
+          if c > max_page then
+            max_page = c
+          end
+        end
+      end
+    end
     if string.match(url, "^https?://api%.skyrock%.com") then
       local json = cjson.decode(html)
       if string.match(url, "/v2/user/get%.json%?id_user=") then
         local user_url = json["user_url"]
         local user_name = string.match(user_url, "^https?://([^%.]+)%.skyrock%.com/$")
         ids[user_name] = true
-        check(user_url .. "robots.txt")
-        check(user_url .. "atom.xml")
-        check(user_url .. "sitemap.xml")
         for _, endpoint in pairs({
           "/blog/get.json",
           "/user/get.json",
@@ -466,7 +538,13 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if not item_name then
     error("No item name found.")
   end
-  if string.match(url["url"], "^https?://api%.skyrock%.com/") then
+  if string.match(url["url"], "^https?://api%.skyrock%.com/")
+    or string.match(url["url"], "/profil/wall/more%?")
+    or string.match(url["url"], "/common/r/skynautes/card/[0-9]+%?")
+    or (
+      string.match(url["url"], "/common/r/skynautes/card/[0-9]")
+      and string.match(url["url"], "/common/r/skynautes/card/([0-9]+)$") ~= item_value
+    ) then
     local html = read_file(http_stat["local_file"])
     if not (string.match(html, "^%s*{") and string.match(html, "}%s*$"))
       and not (string.match(html, "^%s*%[") and string.match(html, "%]%s*$")) then
@@ -475,8 +553,15 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       return false
     end
     local json = cjson.decode(html)
-    local status = json["status"]
+    if (
+      string.match(url["url"], "/profil/wall/more%?")
+      or string.match(url["url"], "/common/r/skynautes/card/")
+    ) and not json["success"] then
+      retry_url = true
+      return false
+    end
   elseif item_type ~= "asset"
+    and status_code == 200
     and not string.match(url["url"], "%.xml")
     and not string.match(url["url"], "%.txt") then
     local html = read_file(http_stat["local_file"])
@@ -487,7 +572,15 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     end
   end
   if http_stat["statcode"] ~= 200
-    and http_stat["statcode"] ~= 404 then
+    and http_stat["statcode"] ~= 404
+    and not (
+      (
+        string.match(url["url"], "/common/r/skynautes/card/")
+        or string.match(url["url"], "^https?://sk%.mu/")
+        or string.match(url["url"], "^https?://[^%.]+%.skyrock%.com/[0-9]+$")
+      )
+      and http_stat["statcode"] == 302
+    ) then
     retry_url = true
     return false
   end
@@ -521,6 +614,15 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
 
   if status_code >= 300 and status_code <= 399 then
     local newloc = urlparse.absolute(url["url"], http_stat["newloc"])
+    if item_type == "blog"
+      and string.match(url["url"], "/common/r/skynautes/card/" .. item_value) then
+      local username = string.match(newloc, "^https?://([^%.]+)%.skyrock%.com/")
+      if username then
+        ids[username] = true
+      else
+        abort_item()
+      end
+    end
     if processed(newloc) or not allowed(newloc, url["url"]) then
       tries = 0
       return wget.actions.EXIT
