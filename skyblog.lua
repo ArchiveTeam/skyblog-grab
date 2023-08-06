@@ -430,6 +430,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       end
       html = html .. flatten_json(json)
     end
+    html = string.gsub(html, "\\", "")
     for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"]+)') do
       checknewurl(newurl)
     end

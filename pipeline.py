@@ -59,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230806.01'
+VERSION = '20230806.02'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36'
 TRACKER_ID = 'skyblog'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -334,7 +334,7 @@ project = Project(
 pipeline = Pipeline(
     CheckIP(),
     GetItemFromTracker('http://{}/{}/multi={}/'
-        .format(TRACKER_HOST, 'arkivertest3', MULTI_ITEM_SIZE),
+        .format(TRACKER_HOST, TRACKER_ID, MULTI_ITEM_SIZE),
         downloader, VERSION),
     PrepareDirectories(warc_prefix=TRACKER_ID),
     WgetDownload(
