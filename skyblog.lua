@@ -26,6 +26,7 @@ local ids = {}
 
 local retry_url = false
 local max_page = 0
+local is_remix = false
 
 abort_item = function(item)
   abortgrab = true
@@ -136,6 +137,7 @@ set_item = function(url)
       abortgrab = false
       tries = 0
       max_page = 0
+      is_remix = false
       retry_url = false
       item_name = item_name_new
       print("Archiving item " .. item_name)
@@ -198,6 +200,12 @@ allowed = function(url, parenturl)
     end
   end
   if found then
+    return false
+  end
+
+  if item_type == "post"
+    and is_remix
+    and string.match(url, "[%?&]action=SHOW_[A-Z]") then
     return false
   end
 
@@ -409,6 +417,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://" .. item_user .. ".skyrock.com/article_" .. item_value .. ".html")
       check("https://" .. item_user .. ".skyrock.com/" .. item_value)
       check("https://" .. item_user .. ".skyrock.com/" .. item_value .. ".html")
+      local slug = string.match(url, "^https?://[^%.]+%.skyrock%.com/" .. item_value .. "(.*)%.html$")
+      if slug then
+        local remix_slug = string.match(html, '<p%s+class="remix_source">%s*<a%s+href="https?://[^%.]+%.skyrock%.com/[0-9]+([^"]+)%.html">Remix</a>')
+        if remix_slug and remix_slug == slug then
+          is_remix = true
+        end
+      end
     end
     if item_type == "blog" then
       if string.match(url, "^https?://[^%.]+%.skyrock%.com/.") then
