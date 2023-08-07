@@ -152,7 +152,13 @@ allowed = function(url, parenturl)
 
   if (item_type ~= "www" and string.match(url, "^https?://www%.skyrock%.com/"))
     or string.match(url, "^https?://[^/]*skyrock%.com/common/r/social/")
-    or string.match(url, "^https?://[^/]*skyrock%.com/.+[%?&]connect=1")
+    or string.match(url, "^https?://[^/]*skyrock%.com/.*[%?&]connect=1")
+    or string.match(url, "^https?://[^/]+/%*$")
+    or string.match(url, "/profil/profil%-comments/[0-9]")
+    or string.match(url, "/honors/.*[%?&]id_badge=")
+    or string.match(url, "/common/r/friends/follow/")
+    or string.match(url, "/common/r/blog/subscribe/")
+    or string.match(url, "/common/r/stats/social_share")
     or (
       string.match(url, "/common/r/skynautes/card/")
       and string.match(url, "/common/r/skynautes/card/([0-9]+)") ~= item_value
@@ -243,7 +249,7 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
     not processed(url)
     or string.match(url, "/common/r/skynautes/card/")
     or string.match(url, "^https?://[^%.]+%.skyrock%.com/[0-9]+$")
-  ) then
+  ) and string.match(url, "^https://") then
     addedtolist[url] = true
     return true
   end
@@ -288,6 +294,10 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     local origurl = url
     if string.len(url) == 0 then
       return nil
+    end
+    local a, b = string.match(newurl, "^(https?)(:.+)$")
+    if a == "http" then
+      newurl = "https" .. b
     end
     local url = string.match(newurl, "^([^#]+)")
     local url_ = string.match(url, "^(.-)[%.\\]*$")
