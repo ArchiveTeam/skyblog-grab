@@ -162,6 +162,7 @@ allowed = function(url, parenturl)
     or string.match(url, "/common/r/stats/social_share")
     or string.match(url, "/profil/photos/blog/")
     or string.match(url, "/profil/videos/blog/")
+    or string.match(url, "[%?&]action=ADD_COMMENT")
     or (
       string.match(url, "/common/r/skynautes/card/")
       and string.match(url, "/common/r/skynautes/card/([0-9]+)") ~= item_value
@@ -252,7 +253,7 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
     not processed(url)
     or string.match(url, "/common/r/skynautes/card/")
     or string.match(url, "^https?://[^%.]+%.skyrock%.com/[0-9]+$")
-  ) and string.match(url, "^https://") then
+  ) and string.match(url, "^https://") and not addedtolist[url] then
     addedtolist[url] = true
     return true
   end
