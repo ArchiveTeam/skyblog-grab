@@ -623,7 +623,6 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     end
   end
   if http_stat["statcode"] ~= 200
-    and http_stat["statcode"] ~= 404
     and not (
       (
         string.match(url["url"], "/common/r/skynautes/card/")
