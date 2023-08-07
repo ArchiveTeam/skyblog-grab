@@ -149,7 +149,8 @@ end
 
 allowed = function(url, parenturl)
   if ids[url]
-    or string.match(url, "^https?://mg.skyrock.com/.") then
+    or string.match(url, "^https?://mg.skyrock.com/.")
+    or ids[string.match(url, "^https?://(.*)$")] then
     return true
   end
 
