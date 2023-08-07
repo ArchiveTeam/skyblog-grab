@@ -146,7 +146,8 @@ set_item = function(url)
 end
 
 allowed = function(url, parenturl)
-  if ids[url] then
+  if ids[url]
+    or string.match(url, "^https?://mg.skyrock.com/.") then
     return true
   end
 
@@ -421,7 +422,8 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
 
   if allowed(url)
     and status_code < 300
-    and not string.match(url, "^https?://[^/]*skyrock%.net/") then
+    and not string.match(url, "^https?://[^/]*skyrock%.net/")
+    and not string.match(url, "^https?://mg.skyrock.com/.") then
     html = read_file(file)
     if item_type == "post" then
       check("https://" .. item_user .. ".skyrock.com/article_" .. item_value .. ".html")
@@ -588,7 +590,8 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   elseif item_type ~= "asset"
     and status_code == 200
     and not string.match(url["url"], "%.xml")
-    and not string.match(url["url"], "%.txt") then
+    and not string.match(url["url"], "%.txt")
+    and not string.match(url["url"], "^https?://mg.skyrock.com/.") then
     local html = read_file(http_stat["local_file"])
     if not string.match(html, "</html>") then
       print("Bad HTML.")
