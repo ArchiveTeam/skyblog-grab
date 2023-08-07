@@ -27,6 +27,7 @@ local ids = {}
 local retry_url = false
 local max_page = 0
 local is_remix = false
+local is_initial_url = true
 
 abort_item = function(item)
   abortgrab = true
@@ -139,6 +140,7 @@ set_item = function(url)
       max_page = 0
       is_remix = false
       retry_url = false
+      is_initial_url = true
       item_name = item_name_new
       print("Archiving item " .. item_name)
     end
@@ -580,6 +582,11 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if not item_name then
     error("No item name found.")
   end
+  if is_initial_url and status_code ~= 200 and status_code ~= 302 then
+    abort_item()
+    return false
+  end
+  is_initial_url = false
   if string.match(url["url"], "^https?://api%.skyrock%.com/")
     or string.match(url["url"], "/profil/wall/more%?")
     or string.match(url["url"], "/common/r/skynautes/card/[0-9]+%?")
