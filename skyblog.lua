@@ -436,6 +436,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     and not string.match(url, "^https?://mg.skyrock.com/.") then
     html = read_file(file)
     if item_type == "post" then
+      html = string.gsub(html, '<link%s+rel="alternate"%s+type="application/rss%+xml"%s+title="RSS"%s+href="https?://[^/]+/[0-9]+_comments%.xml"%s*/>', "")
       check("https://" .. item_user .. ".skyrock.com/article_" .. item_value .. ".html")
       --[[check("https://" .. item_user .. ".skyrock.com/" .. item_value)
       check("https://" .. item_user .. ".skyrock.com/" .. item_value .. ".html")]]
