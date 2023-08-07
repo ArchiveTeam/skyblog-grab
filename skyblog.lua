@@ -692,7 +692,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     io.stdout:write("Server returned bad response. ")
     io.stdout:flush()
     tries = tries + 1
-    if tries > 5 then
+    if tries > 5
+      or string.match(url["url"], "^https?://[^/]+/article_[0-9]+%.html$") then
       io.stdout:write(" Skipping.\n")
       io.stdout:flush()
       tries = 0
