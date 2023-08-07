@@ -171,6 +171,12 @@ allowed = function(url, parenturl)
     return false
   end
 
+  if parenturl
+    and string.match(parenturl, "_comments%.xml$")
+    and string.match(url, "^https?://[^/]+/[0-9]+_comment_1%.html$") then
+    return false
+  end
+
   local found = false
   for pattern, type_ in pairs({
     ["^https?://([^%.]+)%.skyrock%.com/([0-9]+)[^0-9a-zA-Z][^/]*$"]="post",
