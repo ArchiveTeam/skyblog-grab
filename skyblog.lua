@@ -160,6 +160,8 @@ allowed = function(url, parenturl)
     or string.match(url, "/common/r/friends/follow/")
     or string.match(url, "/common/r/blog/subscribe/")
     or string.match(url, "/common/r/stats/social_share")
+    or string.match(url, "/profil/photos/blog/")
+    or string.match(url, "/profil/videos/blog/")
     or (
       string.match(url, "/common/r/skynautes/card/")
       and string.match(url, "/common/r/skynautes/card/([0-9]+)") ~= item_value
