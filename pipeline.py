@@ -59,7 +59,7 @@ if not WGET_AT:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20230807.15'
+VERSION = '20230807.16'
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/116.0'
 TRACKER_ID = 'skyblog'
 TRACKER_HOST = 'legacy-api.arpa.li'
@@ -250,12 +250,11 @@ class WgetArgs(object):
             '--output-document', ItemInterpolation('%(item_dir)s/wget.tmp'),
             '--truncate-output',
             '-e', 'robots=off',
-            '--rotate-dns',
             '--recursive', '--level=inf',
             '--no-parent',
             '--page-requisites',
             '--timeout', '30',
-            '--connect-timeout', '0.3',
+            '--connect-timeout', '5',
             '--tries', 'inf',
             '--domains', 'skyblog.com,skyrock.net,sk.mu',
             '--span-hosts',
