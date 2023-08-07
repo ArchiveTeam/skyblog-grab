@@ -164,6 +164,7 @@ allowed = function(url, parenturl)
     or string.match(url, "/profil/videos/blog/")
     or string.match(url, "[%?&]action=ADD_COMMENT")
     or string.match(url, "%?action=SHOW_COMMENTS$")
+    or string.match(url, "^https?://[^/]+/[0-9]+_comments%.xml$")
     or (
       string.match(url, "/common/r/skynautes/card/")
       and string.match(url, "/common/r/skynautes/card/([0-9]+)") ~= item_value
@@ -440,12 +441,15 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://" .. item_user .. ".skyrock.com/article_" .. item_value .. ".html")
       --[[check("https://" .. item_user .. ".skyrock.com/" .. item_value)
       check("https://" .. item_user .. ".skyrock.com/" .. item_value .. ".html")]]
-      local slug = string.match(url, "^https?://[^%.]+%.skyrock%.com/" .. item_value .. "(.*)%.html$")
+      --[[local slug = string.match(url, "^https?://[^%.]+%.skyrock%.com/" .. item_value .. "(.*)%.html$")
       if slug then
-        local remix_slug = string.match(html, '<p%s+class="remix_source">%s*<a%s+href="https?://[^%.]+%.skyrock%.com/[0-9]+([^"]+)%.html">Remix</a>')
+        local remix_slug = string.match(html, '<p%s+class="remix_source">%s*<a%s+href="https?://[^%.]+%.skyrock%.com/[0-9]+([^"]+)%.html">Remix</a>                        from                            <a href="https://sensuikan.skyrock.com/">SENSUIKAN</a>')
         if remix_slug and remix_slug == slug then
           is_remix = true
         end
+      end]]
+      if string.match(html, '<p%s+class="remix_source">%s*<a%s+href="https?://[^%.]+%.skyrock%.com/[0-9]+[^"]+%.html">Remix</a>%s*from%s*<a%s+href="https?://[^%.]+%.skyrock%.com/">[^<]+</a>') then
+        is_remix = true
       end
     end
     if item_type == "blog" then
