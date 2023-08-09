@@ -240,7 +240,7 @@ allowed = function(url, parenturl)
       "([^%./]+)",
       "([^%./_]+)"
     }) do
-      if item_type == "blog" and pattern == "([0-9]+)" then
+      if (item_type == "blog" and pattern == "([0-9]+)") or item_type ~= "blog" then
         for s in string.gmatch(string.match(url, "^https?://[^/]+(/.*)"), pattern) do
           if ids[s] then
             return true
