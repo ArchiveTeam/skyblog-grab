@@ -679,6 +679,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     end
   end
   
+  if downloaded[url["url"]] then
+    abort_item()
+    return wget.actions.EXIT
+  end
+
   if status_code < 400 then
     downloaded[url["url"]] = true
   end
