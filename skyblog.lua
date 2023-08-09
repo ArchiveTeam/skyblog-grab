@@ -630,6 +630,11 @@ wget.callbacks.write_to_warc = function(url, http_stat)
         or string.match(url["url"], "^https?://[^%.]+%.skyrock%.com/[0-9]+$")
       )
       and http_stat["statcode"] == 302
+    )
+    and not (
+      string.match(url["url"], "^https?://[^/]+/article_[0-9]+%.html$")
+      and tonumber(string.match(url["url"], "([0-9]+)%.html$")) < 100000
+      and http_stat["statcode"] == 404
     ) then
     retry_url = true
     return false
