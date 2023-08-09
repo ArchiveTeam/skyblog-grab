@@ -159,7 +159,6 @@ allowed = function(url, parenturl)
     or string.match(url, "^https?://[^/]*skyrock%.com/.*[%?&]connect=1")
     or string.match(url, "^https?://[^/]+/%*$")
     or string.match(url, "/profil/profil%-comments/[0-9]")
-    or string.match(url, "/honors/.*[%?&]id_badge=")
     or string.match(url, "/common/r/friends/follow/")
     or string.match(url, "/common/r/blog/subscribe/")
     or string.match(url, "/common/r/stats/social_share")
@@ -241,9 +240,11 @@ allowed = function(url, parenturl)
       "([^%./]+)",
       "([^%./_]+)"
     }) do
-      for s in string.gmatch(string.match(url, "^https?://[^/]+(/.*)"), pattern) do
-        if ids[s] then
-          return true
+      if item_type == "blog" and pattern == "([0-9]+)" then
+        for s in string.gmatch(string.match(url, "^https?://[^/]+(/.*)"), pattern) do
+          if ids[s] then
+            return true
+          end
         end
       end
     end
@@ -583,10 +584,10 @@ wget.callbacks.write_to_warc = function(url, http_stat)
   if not item_name then
     error("No item name found.")
   end
-  if is_initial_url and status_code ~= 200 and status_code ~= 302 then
+  --[[if is_initial_url and status_code ~= 200 and status_code ~= 302 then
     abort_item()
     return false
-  end
+  end]]
   is_initial_url = false
   if string.match(url["url"], "^https?://api%.skyrock%.com/")
     or string.match(url["url"], "/profil/wall/more%?")
@@ -631,13 +632,18 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       )
       and http_stat["statcode"] == 302
     )
-    and not (
-      string.match(url["url"], "^https?://[^/]+/article_[0-9]+%.html$")
-      and tonumber(string.match(url["url"], "([0-9]+)%.html$")) < 100000
-      and http_stat["statcode"] == 404
-    ) then
+    and http_stat["statcode"] ~= 404 then
     retry_url = true
     return false
+  end
+  if http_stat["statcode"] == 404 then
+    local html = read_file(http_stat["local_file"])
+    if not string.match(html, '<div%s+id="column_left"%s+class="clearfix%s+p404">%s*<h1>Page not found</h1>%s*<p>We can\'t find the requested page.</p>')
+      and not string.match(html, '<p%s+class="alert">%s*<strong>Page not found</strong>%s*</p>')
+      and not string.match(html, '<h2>Page non trouv.e</h2>') then
+      retry_url = true
+      return false
+    end
   end
   if abortgrab then
     print("Not writing to WARC.")
@@ -689,10 +695,6 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     return wget.actions.EXIT
   end
 
-  if status_code < 400 then
-    downloaded[url["url"]] = true
-  end
-
   if abortgrab then
     abort_item()
     return wget.actions.EXIT
@@ -718,6 +720,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     io.stdout:flush()
     os.execute("sleep " .. sleep_time)
     return wget.actions.CONTINUE
+  else
+    downloaded[url["url"]] = true
   end
 
   tries = 0
