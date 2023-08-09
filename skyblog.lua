@@ -23,6 +23,7 @@ local discovered_outlinks = {}
 local discovered_items = {}
 local bad_items = {}
 local ids = {}
+local url_counts = {}
 
 local retry_url = false
 local max_page = 0
@@ -138,6 +139,7 @@ set_item = function(url)
       abortgrab = false
       tries = 0
       max_page = 0
+      url_counts = {}
       is_remix = false
       retry_url = false
       is_initial_url = true
@@ -608,6 +610,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
       string.match(url["url"], "/profil/wall/more%?")
       or string.match(url["url"], "/common/r/skynautes/card/")
     ) and not json["success"] then
+      print("Problem with JSON.")
       retry_url = true
       return false
     end
@@ -641,6 +644,7 @@ wget.callbacks.write_to_warc = function(url, http_stat)
     if not string.match(html, '<div%s+id="column_left"%s+class="clearfix%s+p404">%s*<h1>Page not found</h1>%s*<p>We can\'t find the requested page.</p>')
       and not string.match(html, '<p%s+class="alert">%s*<strong>Page not found</strong>%s*</p>')
       and not string.match(html, '<h2>Page non trouv.e</h2>') then
+      print("Bad 404 page.")
       retry_url = true
       return false
     end
@@ -691,8 +695,15 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
   
   if downloaded[url["url"]] then
-    abort_item()
-    return wget.actions.EXIT
+    if not url_counts[url["url"]] then
+      url_counts[url["url"]] = 0
+    end
+    url_counts[url["url"]] = url_counts[url["url"]] + 1
+    if url_counts[url["url"]] > 4 then
+      print("URL already retrieved.")
+      abort_item()
+      return wget.actions.EXIT
+    end
   end
 
   if abortgrab then
