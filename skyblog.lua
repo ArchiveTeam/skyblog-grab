@@ -172,7 +172,8 @@ allowed = function(url, parenturl)
     or (
       string.match(url, "/common/r/skynautes/card/")
       and string.match(url, "/common/r/skynautes/card/([0-9]+)") ~= item_value
-    ) then
+    )
+    or string.match(url, "////") then
     return false
   end
 
